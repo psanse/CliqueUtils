@@ -102,7 +102,7 @@ namespace clique_utils {
 	template<class GraphT>
 	inline
 		int iset_prefix_size(
-			const GraphT& g,
+			const GraphT& graph,
 			bitgraph::vertex_t v,
 			const bitgraph::vertex_t vertices[],
 			vertex_pos_t begin,
@@ -115,11 +115,11 @@ namespace clique_utils {
 			const bitgraph::vertex_t w = vertices[i];
 
 			// Check adjacency to the initial vertex.
-			if (g.neighbors(v).is_bit(w)) {
+			if (graph.neighbors(v).is_bit(w)) {
 				return static_cast<int>(i - begin);
 			}
 
-			const auto& neighbors = g.neighbors(w);
+			const auto& neighbors = graph.neighbors(w);
 
 			// Check adjacency to previously accepted vertices.
 			for (vertex_pos_t j = begin; j < i; ++j) {

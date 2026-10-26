@@ -40,18 +40,18 @@ See [`src/main_clique_utils.cpp`](src/main_clique_utils.cpp) and [`src/tests/tes
 
 | Function | Description |
 |---|---|
-| `clique_utils::extend_clique(g, clq, lv, begin, end)` | Adds to `clq` the vertices of `lv[begin, end)` that are adjacent to every vertex already in the clique. |
-| `clique_utils::find_clique<GraphT, Reverse>(g, clq, bbsg)` | Greedy clique built from the vertices in the bitset `bbsg`, taken first to last (or last to first). |
-| `clique_utils::find_clique_max_deg<GraphT, Reverse>(g, clq, bbsg)` | Greedy clique that each time picks the candidate with the most neighbors among the remaining candidates. |
-| `clique_utils::find_clique_from_pool(g, clq, bbsg)` | Builds a greedy clique from every seed vertex and keeps the largest one. |
-| `clique_utils::find_clique_lb<GraphT, Reverse>(g [, bbsg])` | Size of the greedy clique: a lower bound for the maximum clique of `g` (or of `g[bbsg]`). |
-| `clique_utils::greedy_coloring_iseq(g, bbsg [, colors])` | Greedy sequential independent set coloring of `bbsg`: an upper bound for the maximum clique. Optionally returns each vertex's color (C array or `std::vector`). |
-| `clique_utils::is_clique(g, set [, size])` | Whether the set (bitset, `std::vector` or C array with `size`) is a clique. The empty set is not a clique. |
-| `clique_utils::can_extend_clique(g, clq, v)` | Whether `v` is adjacent to every vertex in the clique `clq` (true if empty). |
-| `clique_utils::iset_prefix_size(g, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that form an independent set. |
-| `clique_utils::iset_prefix_size(g, v, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that extend the independent set `{v}`. |
-| `clique_utils::is_iset(g, set)` | Whether the set (bitset or `std::vector`) is an independent set. The empty set is not an independent set. |
-| `clique_utils::can_extend_iset(g, vertices, v)` | Whether `v` is non-adjacent to every vertex in `vertices`. |
+| `clique_utils::extend_clique(graph, clq, vertices, begin, end)` | Adds to `clq` the vertices of the array `vertices[begin, end)` that are adjacent to every vertex already in the clique. Returns the number of vertices added. |
+| `clique_utils::find_clique<GraphT, Reverse>(graph, clq, vertices)` | Greedy clique built from the vertices in the bitset `vertices`, taken first to last (or last to first). |
+| `clique_utils::find_clique_max_deg<GraphT, Reverse>(graph, clq, vertices)` | Greedy clique that each time picks the candidate with the most neighbors among the remaining candidates. |
+| `clique_utils::find_clique_from_pool(graph, clq, vertices)` | Builds a greedy clique from every seed vertex in `vertices` and keeps the largest one. |
+| `clique_utils::find_clique_lb<GraphT, Reverse>(graph [, vertices])` | Size of the greedy clique: a lower bound for the maximum clique of `graph` (or of `graph[vertices]`). |
+| `clique_utils::greedy_coloring_iseq(graph, vertices [, colors])` | Greedy sequential independent set coloring of `vertices`: an upper bound for the maximum clique. Optionally returns each vertex's color in `colors` (C array or `std::vector`). |
+| `clique_utils::is_clique(graph, vertices [, size])` | Whether `vertices` (bitset, `std::vector`, or C array with `size` entries) is a clique. The empty set is not a clique. |
+| `clique_utils::can_extend_clique(graph, clq, v)` | Whether `v` is adjacent to every vertex in the clique `clq` (true if empty). |
+| `clique_utils::iset_prefix_size(graph, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that form an independent set. |
+| `clique_utils::iset_prefix_size(graph, v, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that extend the independent set `{v}`. |
+| `clique_utils::is_iset(graph, vertices)` | Whether `vertices` (bitset or `std::vector`) is an independent set. The empty set is not an independent set. |
+| `clique_utils::can_extend_iset(graph, vertices, v)` | Whether `v` is non-adjacent to every vertex in `vertices`. |
 
 ## Build
 
