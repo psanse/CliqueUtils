@@ -11,7 +11,7 @@
 
 #include <iostream>
 #include "graph/graph.h"
-#include "clq_func.h"
+#include "clique_utils.h"
 
 using namespace bitgraph;
 

@@ -8,7 +8,7 @@
 #include "gtest/gtest.h"
 #include "utils/logger.h"
 #include "graph/graph.h"
-#include "clq_func.h"
+#include "clique_utils.h"
 
 using namespace bitgraph;
 
@@ -164,7 +164,7 @@ TEST_F(CliqueCommonTest, is_iset) {
 	int v = 0;
 
 	////////////////////////////////////////
-	EXPECT_TRUE(clique_utils::is_iset(ug, lv, v));		// {0} is non-adjacent to {2, 5}
+	EXPECT_TRUE(clique_utils::can_extend_iset(ug, lv, v));		// {0} is non-adjacent to {2, 5}
 	///////////////////////////////////////
 	
 }

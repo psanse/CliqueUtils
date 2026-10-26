@@ -512,32 +512,42 @@ namespace clique_utils {
 		return true;		
 	}
 
-
-
 	/**
-	* @brief Determines if {v} is not adjacent to any vertex in @lv.
-	* @param g: input graph
-	* @param lv: input set of vertices
-	* @param v: input vertex
-	* @returns TRUE if the set {lv + v} is an independent set or if {lv} is empty.
-	* @details: created 5/02/2018, last updated 06/05/2025
-	* @comment: if {lv} is an iset, then {lv + v} is also an iset
-	**/
+	 * @brief Checks whether a vertex can extend an independent set.
+	 *
+	 * @details Returns true if @p v is non-adjacent to every vertex
+	 *          in @p vertices. An empty set can always be extended.
+	 *
+	 *          Runs in O(n) worst-case time, where n is the number
+	 *          of vertices in the input set.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @param graph Input graph.
+	 * @param vertices Independent set to be extended
+	 *			(empty set can always be extended).
+	 * @param v Candidate vertex.
+	 * @return True if @p v can extend the independent set;
+	 *         false otherwise.
+	 *
+	 * @pre All vertex identifiers are valid.
+	 * @pre vertices is an independent set, possibly empty.
+	 * @pre v does not occur in vertices.
+	 */
 	template<class GraphT>
 	inline
-		bool is_iset(const GraphT& g, const std::vector<int>& lv, int v) {
-
-		if (lv.empty()) return true;
-
-		for (const auto& w : lv) {
-			if (g.is_edge(v, w)) {
+		bool can_extend_iset(
+			const GraphT& graph, 
+			const bitgraph::vertices& vertices, 
+			vertex_t v)
+	{
+		for (const vertex_t w : vertices) {
+			if (graph.is_edge(v, w)) {
 				return false;
 			}
 		}
 
 		return true;
 	}
-
 
 
 	/**
@@ -655,66 +665,7 @@ namespace clique_utils {
 	}
 
 
-	//////////////////////////////////
-	// VERY CLIQUE SPECIFIC - PLACE IT IN COPT
-	//	template<class GraphT>
-	//	int quasi_clq(GraphT& g, Vertices& clq, int* quasi, typename GraphT::vertex_bitset_t& bbv) {
-	//		////////////////////////////////
-	//		// caches quasicliques in @quasi for consecutive vertices not in @clq (candidate quasi_vertices range [0-highest vertex index of clq[)
-	//		// quasi[VERTEX_IN_CLQ]:= qv (@clq - {VERTEX_IN_CLQ} + {qv} is a clique in @g of the same size)
-	//		// @bbv-set of vertices not considered in qv
-	//		//
-	//		// COMMENTS: quasi MUST be of size the number of vertices of @g
-	//		//
-	//		// RETURN val:number of quasi-cliques (-1 if a new clique is found)	
-	//
-	//		//ASSERT
-	//		if (clq.empty()) return 0;
-	//
-	//		typename GraphT::vertex_bitset_t bbclq(clq, g.number_of_vertices());
-	//		int num_added = 0, num_no_clq = 0, qv = -1, lastOfclq = bbclq.msbn64();
-	//
-	//		for (int v = 0; v < lastOfclq; v++) {									/* last vertex in clq excluded, since it MUST BE in @bbv*/
-	//			if (bbclq.is_bit(v) || !bbv.is_bit(v)) continue;					//filters vertices in @clq and in @bbv
-	//			num_no_clq = 0;
-	//			for (int j = 0; j < clq.size(); j++) {
-	//				if (!g.is_edge(v, clq[j])) {
-	//					num_no_clq++;
-	//					if (num_no_clq >= 2) { break; }
-	//					else { qv = clq[j]; }
-	//				}
-	//			}
-	//
-	//			if (num_no_clq == 0) { //Already a clique and HAS NOT BEEN FOUND!
-	//				clq.push_back(v);
-	//				num_added++;
-	//
-	//#ifdef my_assert_qfunc					
-	//				LOG_ERROR("clique found in preceding dolls-utils::quasi_clq()");
-	//				LOG_ERROR("may only happen in QUASI-CLIQUE mode, and if a new solution of size > +1 has been found previously");
-	//				/*if (is_clique(g, clq)) {
-	//					LOG_ERROR("bizarre clique, exiting....-utils::quasi_clq()");
-	//					LOG_ERROR("v that may be added:" << v);
-	//					stringstream sstr;
-	//					utils::stl::print_collection<Vertices>(clq, sstr);
-	//					LOG_ERROR("clq with v included" << sstr.str());
-	//					exit(-1);
-	//				}
-	//				else {
-	//					LOG_ERROR("bizarre clique, exiting....-utils::quasi_clq()");
-	//				}*/
-	//#endif
-	//				return -1;
-	//			}
-	//			else if (num_no_clq == 1) {
-	//				quasi[qv] = v;
-	//				num_added++;
-	//			}
-	//		}
-	//		return num_added;
-	//	}
-	//
-
+	
 //////////////////////
 //maximum clique bounds
 
@@ -1137,4 +1088,65 @@ namespace clique_utils {
 	//		}
 	//		return min;
 	//	}
+
+//////////////////////////////////
+	// VERY CLIQUE SPECIFIC - PLACE IT IN COPT
+	//	template<class GraphT>
+	//	int quasi_clq(GraphT& g, Vertices& clq, int* quasi, typename GraphT::vertex_bitset_t& bbv) {
+	//		////////////////////////////////
+	//		// caches quasicliques in @quasi for consecutive vertices not in @clq (candidate quasi_vertices range [0-highest vertex index of clq[)
+	//		// quasi[VERTEX_IN_CLQ]:= qv (@clq - {VERTEX_IN_CLQ} + {qv} is a clique in @g of the same size)
+	//		// @bbv-set of vertices not considered in qv
+	//		//
+	//		// COMMENTS: quasi MUST be of size the number of vertices of @g
+	//		//
+	//		// RETURN val:number of quasi-cliques (-1 if a new clique is found)	
+	//
+	//		//ASSERT
+	//		if (clq.empty()) return 0;
+	//
+	//		typename GraphT::vertex_bitset_t bbclq(clq, g.number_of_vertices());
+	//		int num_added = 0, num_no_clq = 0, qv = -1, lastOfclq = bbclq.msbn64();
+	//
+	//		for (int v = 0; v < lastOfclq; v++) {									/* last vertex in clq excluded, since it MUST BE in @bbv*/
+	//			if (bbclq.is_bit(v) || !bbv.is_bit(v)) continue;					//filters vertices in @clq and in @bbv
+	//			num_no_clq = 0;
+	//			for (int j = 0; j < clq.size(); j++) {
+	//				if (!g.is_edge(v, clq[j])) {
+	//					num_no_clq++;
+	//					if (num_no_clq >= 2) { break; }
+	//					else { qv = clq[j]; }
+	//				}
+	//			}
+	//
+	//			if (num_no_clq == 0) { //Already a clique and HAS NOT BEEN FOUND!
+	//				clq.push_back(v);
+	//				num_added++;
+	//
+	//#ifdef my_assert_qfunc					
+	//				LOG_ERROR("clique found in preceding dolls-utils::quasi_clq()");
+	//				LOG_ERROR("may only happen in QUASI-CLIQUE mode, and if a new solution of size > +1 has been found previously");
+	//				/*if (is_clique(g, clq)) {
+	//					LOG_ERROR("bizarre clique, exiting....-utils::quasi_clq()");
+	//					LOG_ERROR("v that may be added:" << v);
+	//					stringstream sstr;
+	//					utils::stl::print_collection<Vertices>(clq, sstr);
+	//					LOG_ERROR("clq with v included" << sstr.str());
+	//					exit(-1);
+	//				}
+	//				else {
+	//					LOG_ERROR("bizarre clique, exiting....-utils::quasi_clq()");
+	//				}*/
+	//#endif
+	//				return -1;
+	//			}
+	//			else if (num_no_clq == 1) {
+	//				quasi[qv] = v;
+	//				num_added++;
+	//			}
+	//		}
+	//		return num_added;
+	//	}
+	//
+
 

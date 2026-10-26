@@ -3,7 +3,7 @@
 #######################
 
 add_executable(tests_clq_func
-    test_clq_func.cpp
+    test_clique_utils.cpp
 )
 
 # Link dependencies
