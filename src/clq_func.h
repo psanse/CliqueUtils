@@ -411,36 +411,50 @@ namespace clique_utils {
 		return static_cast<int>(clq.size());
 	}
 		
-
 	/////////////////
 	//boolean operations
 
 	/**
-	* @brief Determines if the set of vertices @bb is an independent set
-	* @param graph: input graph
-	* @param vertices: input set of vertices (bitset), of capacity at least g.size()
-	* @returns TRUE if the set is an independent set (empty sets are NOT isets)
-	* @TODO: not optimized for sparse graph types
-	**/
+	 * @brief Checks whether a non-empty set of vertices is an independent set.
+	 *
+	 * @details A set is independent if no two of its vertices are adjacent.
+	 *          The empty set is not considered independent.
+	 *
+	 *          Uses bitset operations to detect edges between selected vertices.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @param graph Input graph.
+	 * @param vertices Bitset containing the vertices to examine.
+	 * @return True if @p vertices is a non-empty independent set;
+	 *         false otherwise.
+	 *
+	 * @pre @p vertices has capacity for at least graph.num_vertices() bits.
+	 *
+	 * @note The input bitset is not modified.
+	 * @todo Optimize for sparse graph types.
+	 */
 	template<class GraphT>
 	inline
 		bool is_iset(
-			const GraphT& graph, 
-			typename GraphT::vertex_bitset_t& vertices)
+			const GraphT& graph,
+			const typename GraphT::vertex_bitset_t& vertices)
 	{
+		using bitset_t = typename GraphT::vertex_bitset_t;
+
 		if (vertices.is_empty()) {
 			return false;
 		}
 
-		vertices.init_scan(bbo::NON_DESTRUCTIVE);
+		// Independent non-destructive scan of the (const) input.
+		bitgraph::view::ForwardView<const bitset_t> scan(vertices);
 		vertex_t v = bbo::noBit;
-		while ((v = vertices.next_bit()) != bbo::noBit) {
+		while ((v = scan.next_bit()) != bbo::noBit) {
 
 			//check neighborhood of v
 			const auto& neighbors_v = graph.neighbors(v);
 
 			// Check only blocks from the current vertex onwards.
-			for (block_index_t nBB = 0 /*BITSCAN_WDIV(v)*/ ;
+			for (block_index_t nBB = BITSCAN_WDIV(v);
 				nBB < graph.num_blocks(); ++nBB) {
 							
 				if (vertices.block(nBB) & neighbors_v.block(nBB)) {
@@ -455,31 +469,50 @@ namespace clique_utils {
 	}
 
 	/**
-	* @brief Determines if the set of vertices @bb is an independent set
-	* @param g: input graph
-	* @param lv: input set of vertices
-	* @returns TRUE if the set is an independent set (empty sets are NOT isets)
-	* @details: created 6/10/2017, last updated 06/05/2025
-	* @TODO: not optimized for sparse graph types
-	**/
+	 * @brief Checks whether a non-empty set of vertices is an independent set.
+	 *
+	 * @details A set is independent if no two of its vertices are adjacent.
+	 *          The empty set is not considered independent.
+	 *
+	 *          Runs in O(n^2) worst-case time, where n is the number
+	 *          of vertices in the input set.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @param graph Input graph.
+	 * @param vertices List of vertices to examine.
+	 * @return True if @p vertices is a non-empty independent set;
+	 *         false otherwise.
+	 *
+	 * @pre All vertex identifiers are valid and distinct.
+	 *
+	 * @note The input vertex list is not modified.
+	 */
 	template<class GraphT>
 	inline
-		bool is_iset(const GraphT& g, const std::vector<int>& lv) {
+		bool is_iset(
+			const GraphT& graph,
+			const bitgraph::vertices& vertices)
+	{
 
-		auto nV = lv.size();
-		if (nV == 0) return false;					////empty set is not an independent set
+		const std::size_t vertex_count = vertices.size();
 
-		for (auto i = 0; i < nV - 1; ++i) {
-			for (auto j = i + 1; j < nV; ++j) {
+		if (vertex_count == 0) {
+			return false;
+		}
 
-				if (g.is_edge(lv[i], lv[j])) {
+		for (std::size_t i = 0; i + 1 < vertex_count; ++i) {
+			for (std::size_t j = i + 1; j < vertex_count; ++j) {
+
+				if (graph.is_edge(vertices[i], vertices[j])) {
 					return false;
 				}
 			}
 		}
 
-		return true;
+		return true;		
 	}
+
+
 
 	/**
 	* @brief Determines if {v} is not adjacent to any vertex in @lv.
