@@ -1,9 +1,14 @@
 /**
-* @file  test_clq_func.cpp
-* @brief This file contains unit tests for clique and clique-related common functions (namespace clique_utils).
-* @dev pss
-* @details: created 01/14/2023, imported in 05/05/2025, last update 10/05/2025
-**/
+ * @file test_clique_utils.cpp
+ * @brief Unit tests for clique and clique-related utility functions.
+ *
+ * @details Tests the common graph and clique operations provided
+ *          by the CliqueUtils library (namespace clique_utils).
+ *
+ * @author pss
+ * @date 2023-01-14
+ * @version Last updated 2026-10-26.
+ */
 
 #include "gtest/gtest.h"
 #include "utils/logger.h"

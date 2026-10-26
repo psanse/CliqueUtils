@@ -1,11 +1,21 @@
 /**
-* @file clq_func.h
-* @brief  header for graph algorithms / data types related to cliques / isets
-* @details: imported from COpt repo (created 10/07/19, last update: 28/11/19)
-* @details: imported 09/05/2025, last update 20/05/2025
-* @details: C++17 if contexpr instructions have been commented - add when C++17 compatibility is acceptable (currently only C++14)
-* @dev: pss
-**/
+ * @file clique_utils.h
+ * @brief Utility functions and algorithms for cliques and independent sets.
+ *
+ * @details Provides common graph operations and heuristics related to
+ *          clique and independent-set computation.
+ *
+ *          Originally developed in the COPT repository and later
+ *          integrated into the standalone CliqueUtils library.
+ *
+ *          Requires C++14. C++17 features such as if constexpr
+ *          are intentionally not used.
+ *
+ * @author pss
+ * @date 2019-07-10
+ * @note Imported into CliqueUtils on 2025-05-09.
+ * @note Last updated: 2026-10-26.
+ */
 
 #ifndef CLIQUE_UTILS_H
 #define CLIQUE_UTILS_H
