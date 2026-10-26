@@ -221,7 +221,7 @@ TEST_F(CliqueCommonTest, is_clique) {
 	int v = 0;
 
 	////////////////////////////////////////
-	EXPECT_TRUE(clique_utils::is_clique(ug, lv, v));		// {0} is adjacent to {4}
+	EXPECT_TRUE(clique_utils::can_extend_clique(ug, lv, v));		// {0} is adjacent to {4}
 	///////////////////////////////////////
 
 	///////////////////
@@ -328,7 +328,7 @@ TEST(Clique, SEQ_coloring) {
 
 	////////////////////////////////////////
 	int ub[NV];
-	int nCol = clique_utils::ISEQ(ug, bbsg, ub);
+	int nCol = clique_utils::greedy_coloring_iseq(ug, bbsg, ub);
 	///////////////////////////////////////
 
 	EXPECT_EQ(3, nCol);		//{0, 2} {1, 3, 5} {4} - 3 colors
@@ -342,7 +342,7 @@ TEST(Clique, SEQ_coloring) {
 
 	////////////////////////////////////////
 	std::vector<int> ubVector;
-	nCol = clique_utils::ISEQ(ug, bbsg, ubVector);
+	nCol = clique_utils::greedy_coloring_iseq(ug, bbsg, ubVector);
 	///////////////////////////////////////
 
 	EXPECT_EQ(3, nCol);		//{0, 2} {1, 3, 5} {4} - 3 colors

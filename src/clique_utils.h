@@ -15,6 +15,8 @@
  * @date 2019-07-10
  * @note Imported into CliqueUtils on 2025-05-09.
  * @note Last updated: 2026-10-26.
+ * 
+ * @todo Check experimental functions at the end of the file (e.g., extend_clique_with_iset).
  */
 
 #ifndef CLIQUE_UTILS_H
@@ -561,50 +563,52 @@ namespace clique_utils {
 
 
 	/**
-	 * @brief Checks whether a non-empty set of vertices is a clique.
-	 *
-	 * @details A set is a clique if every pair of its vertices is adjacent.
-	 *          The empty set is not considered a clique.
-	 *
-	 *          Uses population counts: each vertex must be adjacent to
-	 *          all the other vertices in the set.
-	 *
-	 * @tparam GraphT Undirected graph type.
-	 * @param graph Input graph.
-	 * @param vertices Bitset containing the vertices to examine.
-	 * @return True if @p vertices is a non-empty clique; false otherwise.
-	 *
-	 * @note The input bitset is not modified.
-	 * @todo Optimize for sparse graph types.
-	 */
+	* @brief Determines if the set of vertices @vertices forms a clique
+	*
+	* @details Each selected vertex v must be adjacent to precisely the other
+	*          (pc - 1) selected vertices, pc being the set size. As graphs have
+	*          no self-loops, this is equivalent to vertices \ N(v) == {v},
+	*          which is tested block-wise with no population counts.
+	*          Adjacency is symmetric, so for each v only the blocks from the
+	*          block of v onwards are examined.
+	*
+	* @param graph: input graph
+	* @param vertices: input set of vertices (bitset), not modified
+	* @returns TRUE if the set is a clique (empty sets are NOT cliques)
+	* @TODO: not optimized for sparse graph types
+	**/
 	template<class GraphT>
 	inline
 		bool is_clique(
 			const GraphT& graph,
-			const typename GraphT::vertex_bitset_t& vertices)
-	{
+			const typename GraphT::vertex_bitset_t& vertices) {
+
 		using bitset_t = typename GraphT::vertex_bitset_t;
 
-		const int pc = vertices.count();
-		if (pc == 0) {
-			return false;
-		}
+		if (vertices.is_empty()) { return false; }		//an empty set is not a clique
 
-		// Independent non-destructive scan of the (const) input.
+		//independent non-destructive scan: the const input is not modified
 		bitgraph::view::ForwardView<const bitset_t> scan(vertices);
 		vertex_t v = bbo::noBit;
-		while ((v = scan.next_bit()) != bbo::noBit) {
-
-			// v must be adjacent to the other (pc - 1) vertices.
+		while ((v = scan.next_bit()) != bbo::noBit)
+		{
 			const auto& neighbors_v = graph.neighbors(v);
-			int common = 0;
-			for (block_index_t nBB = 0; nBB < graph.num_blocks(); ++nBB) {
-				common += bitgraph::bblock::popc64(
-					vertices.block(nBB) & neighbors_v.block(nBB));
-			}
+			const block_index_t first_block = WDIV(v);
 
-			if (common != pc - 1) {
-				return false;
+			for (block_index_t nBB = first_block;
+				nBB < static_cast<int>(graph.num_blocks()); ++nBB)
+			{
+				//vertices not adjacent to v: only v itself is allowed
+				auto non_adjacent = vertices.block(nBB) & ~neighbors_v.block(nBB);
+
+				// clears v itself from the non_adjacent set if it is in the same block as v
+				if (nBB == first_block) {
+					non_adjacent &= ~bblock::MASK_BIT(BITSCAN_WMOD(v));	 //clear the bit of v itself
+				}
+
+				if (non_adjacent) {
+					return false;
+				}
 			}
 		}
 
@@ -612,32 +616,40 @@ namespace clique_utils {
 	}
 
 	/**
-	 * @brief Checks whether a non-empty array of vertices is a clique.
+	 * @brief Checks whether a non-empty set of vertices forms a clique.
 	 *
-	 * @details Runs in O(n^2) worst-case time, where n = size.
-	 *          The empty set is not considered a clique.
+	 * @details A set forms a clique if every pair of distinct vertices
+	 *          is adjacent. The empty set is not considered a clique.
+	 *
+	 *          Runs in O(n^2) worst-case time, where n is the number
+	 *          of vertices in the input set.
 	 *
 	 * @tparam GraphT Undirected graph type.
 	 * @param graph Input graph.
-	 * @param vertices Array of vertices to examine.
-	 * @param size Number of vertices in @p vertices.
-	 * @return True if the vertices form a non-empty clique; false otherwise.
+	 * @param vertices List of vertices to examine.
+	 * @return True if @p vertices forms a non-empty clique;
+	 *         false otherwise.
 	 *
 	 * @pre All vertex identifiers are valid and distinct.
+	 *
+	 * @note The input vertex list is not modified.
 	 */
 	template<class GraphT>
 	inline
 		bool is_clique(
 			const GraphT& graph,
-			const vertex_t vertices[],
-			std::size_t size)
-	{
-		if (size == 0) {
-			return false;
+			const bitgraph::vertices& vertices) {
+
+		std::size_t num_vertices = vertices.size();
+
+		//an empty set is not a clique
+		if (num_vertices == 0) {
+			return false;					
 		}
 
-		for (std::size_t i = 0; i + 1 < size; ++i) {
-			for (std::size_t j = i + 1; j < size; ++j) {
+		for (std::size_t i = 0; i + 1 < num_vertices; ++i) {
+			for (std::size_t j = i + 1; j < num_vertices; ++j) {
+
 				if (!graph.is_edge(vertices[i], vertices[j])) {
 					return false;
 				}
@@ -648,50 +660,80 @@ namespace clique_utils {
 	}
 
 	/**
-	 * @brief Checks whether a non-empty list of vertices is a clique.
+	 * @brief Checks whether a non-empty set of vertices forms a clique.
 	 *
-	 * @details Runs in O(n^2) worst-case time, where n is the number
-	 *          of vertices. The empty set is not considered a clique.
+	 * @details A set forms a clique if every pair of distinct vertices
+	 *          is adjacent. The empty set is not considered a clique.
+	 *
+	 *          Runs in O(n^2) worst-case time, where n = size,
+	 *          assuming constant-time adjacency checks.
 	 *
 	 * @tparam GraphT Undirected graph type.
 	 * @param graph Input graph.
-	 * @param vertices List of vertices to examine.
-	 * @return True if @p vertices is a non-empty clique; false otherwise.
+	 * @param vertices Array of vertex identifiers.
+	 * @param size Number of vertices in the array.
+	 * @return True if @p vertices forms a non-empty clique;
+	 *         false otherwise.
 	 *
+	 * @pre vertices contains at least size valid entries.
 	 * @pre All vertex identifiers are valid and distinct.
+	 *
+	 * @note The input array is not modified.
 	 */
 	template<class GraphT>
 	inline
 		bool is_clique(
 			const GraphT& graph,
-			const bitgraph::vertices& vertices)
+			const vertex_t vertices[], 
+			std::size_t size)
 	{
-		return is_clique(graph, vertices.data(), vertices.size());
+
+		//an empty set is not a clique
+		if (size == 0) {
+			return false;
+		}
+
+		for (std::size_t i = 0; i + 1 < size; ++i) {
+			for (std::size_t j = i + 1; j < size; ++j) {
+
+				if (!graph.is_edge(vertices[i], vertices[j])) {
+					return false;
+				}
+			}
+		}
+
+		return true;
 	}
 
 	/**
-	 * @brief Checks whether a vertex is adjacent to every vertex in a list.
+	 * @brief Checks whether a vertex can extend an existing clique.
 	 *
-	 * @details If @p vertices is a clique, the result tells whether
-	 *          {vertices + v} is also a clique. An empty list yields true.
+	 * @details Returns true if @p v is adjacent to every vertex
+	 *          in @p clq. An empty clique can always be extended.
+	 *
+	 *          Runs in O(n) worst-case time, where n is the number
+	 *          of vertices in the input clique.
 	 *
 	 * @tparam GraphT Undirected graph type.
 	 * @param graph Input graph.
-	 * @param vertices List of vertices, possibly empty.
+	 * @param clq Clique to be extended.
 	 * @param v Candidate vertex.
-	 * @return True if @p v is adjacent to all vertices in @p vertices
-	 *         (or @p vertices is empty); false otherwise.
+	 * @return True if @p v can extend the clique;
+	 *         false otherwise.
 	 *
-	 * @pre v does not occur in vertices.
+	 * @pre All vertex identifiers are valid.
+	 * @pre @p clq is a clique, possibly empty.
+	 * @pre @p v does not occur in @p clq.
 	 */
 	template<class GraphT>
 	inline
-		bool is_clique(
+		bool can_extend_clique(
 			const GraphT& graph,
-			const bitgraph::vertices& vertices,
+			const bitgraph::vertices& clq,
 			vertex_t v)
 	{
-		for (const vertex_t w : vertices) {
+		
+		for (const auto w : clq) {
 			if (!graph.is_edge(v, w)) {
 				return false;
 			}
@@ -700,60 +742,76 @@ namespace clique_utils {
 		return true;
 	}
 
+	
 	//////////////////////
-	// maximum clique bounds
+	//maximum clique bounds
+
 
 	/**
-	 * @brief Computes a lower bound for the maximum clique in graph[vertices].
+	 * @brief Computes a greedy lower bound on the maximum clique size.
 	 *
-	 * @details Equivalent to find_clique() but does not store the clique.
+	 * @details Greedily constructs a clique in the subgraph induced by
+	 *          @p vertices, selecting vertices in increasing or decreasing
+	 *          order. After each selection, the remaining candidates are
+	 *          restricted to the neighbors of the selected vertex.
+	 *
+	 *          Equivalent to find_clique() but does not store the clique.
+	 *          The resulting size is a lower bound on the maximum clique
+	 *          size of the induced subgraph.
 	 *
 	 * @tparam GraphT Undirected graph type.
-	 * @tparam Reverse If true, vertices are taken from last to first;
-	 *                 otherwise, from first to last.
+	 * @tparam Reverse If true, processes vertices in decreasing order;
+	 *                 otherwise, in increasing order.
+	 *
 	 * @param graph Input graph.
 	 * @param vertices Bitset of candidate vertices.
-	 * @return Size of the greedy clique.
+	 * @return Size of the greedily constructed clique (lower bound).
 	 *
 	 * @note The input bitset is not modified.
 	 */
 	template<class GraphT, bool Reverse = false>
 	inline
 		int find_clique_lb(
-			const GraphT& graph,
-			const typename GraphT::vertex_bitset_t& vertices)
+			const GraphT& graph, 
+			const typename GraphT::vertex_bitset_t& vertices) 
 	{
-		typename GraphT::vertex_bitset_t candidates{ vertices };
+
+		typename GraphT::vertex_bitset_t candidates(vertices);
+
 		int lb = 0;
-
+				
 		candidates.init_scan(
-			Reverse ? bbo::NON_DESTRUCTIVE_REVERSE : bbo::NON_DESTRUCTIVE
-		);
+			Reverse 
+			? bbo::NON_DESTRUCTIVE_REVERSE 
+			: bbo::NON_DESTRUCTIVE
+		);	
 
+				
 		while (true) {
 
-			const vertex_t v = Reverse
+			const vertex_t v = Reverse 
 				? candidates.prev_bit()
 				: candidates.next_bit();
-
+									
 			if (v == bbo::noBit) {
 				break;
 			}
-
-			++lb;
+					
+			lb++;
 
 			// Restrict remaining candidates to neighbors of v.
-			const auto& neighbors_v = graph.neighbors(v);
-
+			const auto& neighbors_v  = graph.neighbors(v);
+			
 			if (Reverse) {
-				for (block_index_t nBB = WDIV(v); nBB >= 0; --nBB) {
+				for (block_index_t nBB = BITSCAN_WDIV(v);
+					nBB >= 0; --nBB)
+				{
 					candidates.block(nBB) &= neighbors_v.block(nBB);
 				}
 			}
 			else {
-				for (block_index_t nBB = WDIV(v);
-					nBB < static_cast<int>(graph.num_blocks());
-					++nBB)
+				for (block_index_t nBB = BITSCAN_WDIV(v);
+					nBB < graph.num_blocks(); ++nBB)
 				{
 					candidates.block(nBB) &= neighbors_v.block(nBB);
 				}
@@ -762,134 +820,149 @@ namespace clique_utils {
 
 		return lb;
 	}
-
 	/**
-	 * @brief Computes a lower bound for the maximum clique in the whole graph.
+	 * @brief Computes a greedy lower bound on the maximum clique size.
+	 *
+	 * @details Considers all vertices of @p graph as initial candidates.
+	 *          Equivalent to find_clique_lb(graph, vertices), where
+	 *          vertices contains the entire vertex set V(graph).
 	 *
 	 * @tparam GraphT Undirected graph type.
-	 * @tparam Reverse If true, vertices are taken from last to first;
-	 *                 otherwise, from first to last.
+	 * @tparam Reverse If true, processes vertices in decreasing order;
+	 *                 otherwise, in increasing order.
+	 *
 	 * @param graph Input graph.
-	 * @return Size of the greedy clique.
+	 * @return Size of the greedily constructed clique (lower bound).
+	 *
+	 * @note Returns 0 for an empty graph.
 	 */
 	template<class GraphT, bool Reverse = false>
 	inline
 		int find_clique_lb(const GraphT& graph)
 	{
-		const typename GraphT::vertex_bitset_t all_vertices(
-			static_cast<int>(graph.size()), true);
 
-		return find_clique_lb<GraphT, Reverse>(graph, all_vertices);
+		typename GraphT::vertex_bitset_t candidates(graph.size(), true);
+
+		return find_clique_lb<GraphT, Reverse>(graph, candidates);
 	}
 
-	/////////////////////
-	// maximum clique upper bound (SEQ vertex coloring)
-
-	namespace detail {
-
-		/**
-		 * @brief Greedy sequential independent-set coloring.
-		 *
-		 * @details Shared implementation of the ISEQ overloads. @p color_of
-		 *          is called as color_of(v, color) for every colored vertex.
-		 */
-		template<class GraphT, class ColorSink>
-		inline
-			int iseq_color(
-				const GraphT& graph,
-				const typename GraphT::vertex_bitset_t& vertices,
-				ColorSink color_of)
-		{
-			int pending = vertices.count();
-			if (pending == 0) {
-				return 0;
-			}
-
-			int color = 1;
-			vertex_t v = bbo::noBit;
-
-			typename GraphT::vertex_bitset_t uncolored(vertices);
-			typename GraphT::vertex_bitset_t candidates(graph.size());
-
-			while (true) {
-
-				// Remaining vertices to be colored.
-				candidates = uncolored;
-
-				// Build a new independent set from the candidates.
-				candidates.init_scan(bbo::DESTRUCTIVE);
-				while ((v = candidates.next_bit_del(uncolored)) != bbo::noBit) {
-
-					color_of(v, color);
-
-					if (--pending == 0) {
-						return color;		// all vertices colored
-					}
-
-					// Remove neighbors of v from the candidates.
-					candidates.erase_block(WDIV(v), -1, graph.neighbors(v));
-				}
-
-				++color;
-			}
-		}
-
-	}//end of namespace detail
-
+		
 	/**
-	 * @brief Greedy sequential independent-set coloring of a vertex set.
+	 * @brief Computes a greedy sequential coloring of a vertex set.
 	 *
-	 * @details The number of colors is an upper bound for the maximum
-	 *          clique in graph[vertices].
+	 * @details Repeatedly constructs independent sets from the remaining
+	 *          uncolored vertices, assigning a new color to each set.
+	 *          Within each color class, vertices are selected in
+	 *          increasing order.
 	 *
-	 *          Runs in O(n^3) worst-case time, but is fast in practice
-	 *          thanks to bit-parallelism.
+	 *          The resulting number of colors is an upper bound on
+	 *          the chromatic number of the induced subgraph and on
+	 *          its maximum clique size.
+	 *
+	 *          Uses bitset operations for efficient candidate elimination.
+	 *          Runs in O(n^2 + nB) worst-case time, where n is the number
+	 *          of candidate vertices and B is the number of bit blocks.
 	 *
 	 * @tparam GraphT Undirected graph type.
 	 * @param graph Input graph.
 	 * @param vertices Bitset of vertices to be colored.
-	 * @param colors (Optional) array of size graph.size() receiving the
-	 *               color (starting at 1) of each colored vertex.
-	 * @return Number of colors used.
+	 * @param colors Optional output array of size at least graph.num_vertices(),
+	 *           storing the assigned color of each selected vertex.
+	 *           Colors are numbered starting from 1. Entries for vertices
+	 *           outside the input set are left unchanged.
+	 *
+	 * @return Number of colors used, or 0 if the input set is empty.
+	 *
+	 * @pre All selected vertex identifiers are valid.
+	 * @pre vertices has capacity for at least graph.num_vertices() bits.
+	 * @pre If ub is not null, it points to a writable array of sufficient size.
+	 *
+	 * @note The input bitset is not modified.
+	 * @todo Add unit tests.
 	 */
 	template<class GraphT>
 	inline
-		int ISEQ(
+		int greedy_coloring_iseq(
 			const GraphT& graph,
 			const typename GraphT::vertex_bitset_t& vertices,
-			int* colors = nullptr)
+			int* colors = nullptr) 
 	{
-		return detail::iseq_color(graph, vertices,
-			[colors](vertex_t v, int color) {
-				if (colors) { colors[v] = color; }
-			});
+			
+		int remaining = vertices.count();
+				
+		if (remaining == 0) {
+			return 0; 
+		}			
+
+		int color = 0;		
+
+		//main loop - greedy coloring	
+		typename GraphT::vertex_bitset_t uncolored(vertices);
+		typename GraphT::vertex_bitset_t candidates(graph.size(), false);		// initially empty
+
+		vertex_t v = bbo::noBit;
+
+		while (true) {
+
+			++color;
+
+			// Start a new color class.
+			candidates = uncolored;
+			candidates.init_scan(bbo::DESTRUCTIVE);
+					
+
+			while ((v = candidates.next_bit_del(uncolored)) 
+				!= bbo::noBit)
+			{
+
+				// Assign the current color.
+				if (colors) {
+					colors[v] = color;
+				}
+								
+				if(--remaining == 0) {
+					return color;				// quick exit - all vertices colored
+				}
+
+				// Remove neighbors of v from the current color class.
+				candidates.erase_block(
+					WDIV(v), -1, graph.neighbors(v));			
+			}			
+		}	
 	}
 
 	/**
-	 * @brief Greedy sequential independent-set coloring of a vertex set.
+	 * @brief Computes a greedy sequential coloring using independent sets.
 	 *
+	 * @details Repeatedly constructs independent sets from the remaining
+	 *          uncolored vertices, assigning a new color to each set.
+	 *          Vertices are processed in increasing order.
+	 *
+	 *          The number of colors provides an upper bound on the
+	 *          maximum clique size of the induced subgraph.
+	 *
+	 * @tparam GraphT Undirected graph type.
 	 * @param graph Input graph.
 	 * @param vertices Bitset of vertices to be colored.
-	 * @param colors Output vector of size graph.size() with the color
-	 *               (starting at 1) of each colored vertex, 0 otherwise.
-	 *               Left untouched if @p vertices is empty.
-	 * @return Number of colors used.
+	 * @param colors Output vector containing the assigned colors,
+	 *               indexed by vertex identifier. Colors start at 1;
+	 *               vertices outside the input set receive color 0.
+	 * @return Number of colors used, or 0 if the input set is empty.
+	 *
+	 * @note The input bitset is not modified.
 	 */
 	template<class GraphT>
 	inline
-		int ISEQ(
+		int greedy_coloring_iseq(
 			const GraphT& graph,
 			const typename GraphT::vertex_bitset_t& vertices,
 			std::vector<int>& colors)
 	{
-		if (vertices.is_empty()) {
-			return 0;
-		}
 
 		colors.assign(graph.size(), 0);
 
-		return detail::iseq_color(graph, vertices,
-			[&colors](vertex_t v, int color) { colors[v] = color; });
+		return greedy_coloring_iseq(graph, vertices, colors.data());
+		
 	}
 
 

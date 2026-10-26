@@ -31,7 +31,8 @@ static void print_bounds(const ugraph& ug) {
 	std::cout << "clique LB (max degree greedy):    " << clq.size() << " {";
 	for (const auto& v : clq) { std::cout << " " << v; }
 	std::cout << " }" << std::endl;
-	std::cout << "clique UB (ISEQ coloring):        " << clique_utils::ISEQ(ug, bbsg) << std::endl;
+	std::cout << "clique UB (ISEQ coloring):        "
+			<< clique_utils::greedy_coloring_iseq(ug, bbsg) << std::endl;
 }
 
 /**
