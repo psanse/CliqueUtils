@@ -14,7 +14,8 @@
 #include "utils/logger.h"
 #include "bitscan/bbobject.h"		
 #include "bitscan/bitblock.h"		//for bitblock operations
-#include "bitscan/bbset.h"	
+#include "bitscan/bbset.h"
+#include "bitscan/bbscan_view.h"	//independent scan views
 #include "graph/graph_types.h"
 
 #include <cassert>					//DEBUG run-time assertions 
@@ -360,11 +361,11 @@ namespace clique_utils {
 		clq.clear();
 
 		bitset_t candidates(vertices);
-		bitset_t seeds(vertices);
 
 		bitgraph::vertices clq_curr;
 
-		seeds.init_scan(bbo::NON_DESTRUCTIVE);
+		// Independent non-destructive scan of the (const) input: no copy needed.
+		bitgraph::view::ForwardView<const bitset_t> seeds(vertices);
 
 		vertex_t v = bbo::noBit;
 
