@@ -12,11 +12,11 @@ Header-only C++ functions for cliques and independent sets: greedy heuristics, m
 
 ## Usage
 
-Include [`src/clq_func.h`](src/clq_func.h). The functions live in the namespace `clique_utils` and work on BitGraph graphs (namespace `bitgraph`):
+Include [`src/clique_utils.h`](src/clique_utils.h). The functions live in the namespace `clique_utils` and work on BitGraph graphs (namespace `bitgraph`):
 
 ```cpp
 #include "graph/graph.h"
-#include "clq_func.h"
+#include "clique_utils.h"
 
 using namespace bitgraph;
 
@@ -36,22 +36,24 @@ int ub = clique_utils::ISEQ(ug, bbsg);                // 3 colors
 bool ok = clique_utils::is_clique(ug, clq);           // true
 ```
 
-See [`src/main_clq.cpp`](src/main_clq.cpp) and [`src/tests/test_clq_func.cpp`](src/tests/test_clq_func.cpp) for complete examples.
+See [`src/main_clq.cpp`](src/main_clq.cpp) and [`src/tests/test_clique_utils.cpp`](src/tests/test_clique_utils.cpp) for complete examples.
 
 ## API
 
 | Function | Description |
 |---|---|
-| `clique_utils::find_clique(g, clq, lv, begin, end)` | Adds to `clq` the vertices of `lv[begin, end)` that are adjacent to every vertex already in the clique. |
+| `clique_utils::extend_clique(g, clq, lv, begin, end)` | Adds to `clq` the vertices of `lv[begin, end)` that are adjacent to every vertex already in the clique. |
 | `clique_utils::find_clique<GraphT, Reverse>(g, clq, bbsg)` | Greedy clique built from the vertices in the bitset `bbsg`, taken first to last (or last to first). |
 | `clique_utils::find_clique_max_deg<GraphT, Reverse>(g, clq, bbsg)` | Greedy clique that each time picks the candidate with the most neighbors among the remaining candidates. |
 | `clique_utils::find_clique_from_pool(g, clq, bbsg)` | Builds a greedy clique from every seed vertex and keeps the largest one. |
 | `clique_utils::find_clique_lb<GraphT, Reverse>(g [, bbsg])` | Size of the greedy clique: a lower bound for the maximum clique of `g` (or of `g[bbsg]`). |
 | `clique_utils::ISEQ(g, bbsg [, ub])` | Greedy sequential independent set coloring of `bbsg`: an upper bound for the maximum clique. Optionally returns each vertex's color (C array or `std::vector`). |
-| `clique_utils::is_clique(g, set [, v])` | Whether the set (bitset, `std::vector` or C array), plus vertex `v` if given, is a clique. The empty set is not a clique. |
+| `clique_utils::is_clique(g, set)` | Whether the set (bitset, `std::vector` or C array plus size) is a clique. The empty set is not a clique. |
+| `clique_utils::is_clique(g, vertices, v)` | Whether `v` is adjacent to every vertex in `vertices` (true if empty). |
 | `clique_utils::iset_prefix_size(g, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that form an independent set. |
 | `clique_utils::iset_prefix_size(g, v, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that extend the independent set `{v}`. |
-| `clique_utils::is_iset(g, set [, v])` | Whether the set (bitset or `std::vector`), plus vertex `v` if given, is an independent set. The empty set is not an independent set. |
+| `clique_utils::is_iset(g, set)` | Whether the set (bitset or `std::vector`) is an independent set. The empty set is not an independent set. |
+| `clique_utils::can_extend_iset(g, vertices, v)` | Whether `v` is non-adjacent to every vertex in `vertices`. |
 
 ## Build
 
@@ -76,7 +78,7 @@ bin/Release/clq_utils path/to/graph.clq
 ## Project layout
 
 ```
-src/clq_func.h         clique and independent set functions (header-only library)
+src/clique_utils.h         clique and independent set functions (header-only library)
 src/main_clq.cpp       demo executable
 src/tests/             GoogleTest unit tests
 CMakeLists.txt         fetches BitGraph and GoogleTest

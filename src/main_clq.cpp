@@ -1,6 +1,6 @@
 /**
  * @file main_clq.cpp
- * @brief Demo executable for the clique and independent set utilities in clq_func.h.
+ * @brief Demo executable for the clique and independent set utilities in clique_utils.h.
  *
  * @details With no arguments it runs on a small demo graph; otherwise it reads the graph
  * from the DIMACS file given as the first argument. Prints a greedy clique lower bound
