@@ -1,5 +1,5 @@
 /**
- * @file main_clq.cpp
+ * @file main_clique_utils.cpp
  * @brief Demo executable for the clique and independent set utilities in clique_utils.h.
  *
  * @details With no arguments it runs on a small demo graph; otherwise it reads the graph
@@ -13,15 +13,13 @@
 #include "graph/graph.h"
 #include "clique_utils.h"
 
-using namespace bitgraph;
-
 /**
  * @brief Prints clique lower bounds and the coloring upper bound of a graph
  * @param ug input graph
  */
-static void print_bounds(const ugraph& ug) {
+static void print_bounds(const bitgraph::ugraph& ug) {
 
-	ugraph::vertex_bitset_t bbsg{ ug.size(), true };		//all vertices
+	bitgraph::ugraph::vertex_bitset_t bbsg{ ug.size(), true };		//all vertices
 
 	std::vector<int> clq;
 	clique_utils::find_clique_max_deg(ug, clq, bbsg);
@@ -44,12 +42,12 @@ static void print_bounds(const ugraph& ug) {
 int main(int argc, char** argv) {
 
 	if (argc > 1) {
-		ugraph ug{ argv[1] };
+		bitgraph::ugraph ug{ argv[1] };
 		print_bounds(ug);
 	}
 	else {
 		//triangle {0, 3, 4} plus edges 0-1 and 2-5
-		ugraph ug{ 6 };
+		bitgraph::ugraph ug{ 6 };
 		ug.add_edge(0, 1);
 		ug.add_edge(0, 3);
 		ug.add_edge(0, 4);

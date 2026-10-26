@@ -3,13 +3,13 @@
 file(GLOB HEADER_FILES CONFIGURE_DEPENDS "*.h")
 file(GLOB SRC_FILES CONFIGURE_DEPENDS "*.cpp")
 
-add_executable(clq_utils
+add_executable(clique_utils
 	${HEADER_FILES}
 	${SRC_FILES}
 )
 
 # Link BitGraph libraries
-target_link_libraries(clq_utils
+target_link_libraries(clique_utils
 	PRIVATE
 		graph
 		bitscan
@@ -17,19 +17,19 @@ target_link_libraries(clq_utils
 )
 
 # BitGraph headers
-target_include_directories(clq_utils
+target_include_directories(clique_utils
     PRIVATE
         ${bitgraph_SOURCE_DIR}/src
         ${bitgraph_SOURCE_DIR}/src/graph/algorithms
 )
 
 # Require C++14
-target_compile_features(clq_utils
+target_compile_features(clique_utils
     PRIVATE cxx_std_14
 )
 
 # Executable output directory
-set_target_properties(clq_utils
+set_target_properties(clique_utils
 	PROPERTIES
 		RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin"
 )
