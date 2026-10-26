@@ -49,8 +49,8 @@ See [`src/main_clq.cpp`](src/main_clq.cpp) and [`src/tests/test_clq_func.cpp`](s
 | `clique_utils::find_clique_lb<GraphT, Reverse>(g [, bbsg])` | Size of the greedy clique: a lower bound for the maximum clique of `g` (or of `g[bbsg]`). |
 | `clique_utils::ISEQ(g, bbsg [, ub])` | Greedy sequential independent set coloring of `bbsg`: an upper bound for the maximum clique. Optionally returns each vertex's color (C array or `std::vector`). |
 | `clique_utils::is_clique(g, set [, v])` | Whether the set (bitset, `std::vector` or C array), plus vertex `v` if given, is a clique. The empty set is not a clique. |
-| `clique_utils::find_iset(g, lv, begin, end)` | Size of the independent set formed by the first consecutive vertices of `lv[begin, end)`. |
-| `clique_utils::find_iset(g, v, lv, begin, end)` | Number of consecutive vertices of `lv[begin, end)` that extend the independent set `{v}`. |
+| `clique_utils::iset_prefix_size(g, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that form an independent set. |
+| `clique_utils::iset_prefix_size(g, v, vertices, begin, end)` | Number of consecutive vertices of `vertices[begin, end)` that extend the independent set `{v}`. |
 | `clique_utils::is_iset(g, set [, v])` | Whether the set (bitset or `std::vector`), plus vertex `v` if given, is an independent set. The empty set is not an independent set. |
 
 ## Build
@@ -71,9 +71,7 @@ bin/Release/clq_utils path/to/graph.clq
 
 ## Known issues
 
-- `clique_utils::find_clique_from_pool` narrows the candidates with the neighborhood of the seed vertex instead of the vertex just added, so it can return sets that are not cliques. The unit test `Clique.find_clique_in_pool` currently expects that wrong result (`{0, 1, 3, 4}`).
-- `clique_utils::is_clique` for bitsets only checks that each vertex has at least one neighbor in the set, so it returns true for some sets that are not cliques (e.g. `{0, 1, 3}` in the demo graph).
-- `clique_utils::find_iset(g, v, lv, begin, end)` reads out of bounds when `begin == 0`, because the inner loop counter is unsigned.
+- None known.
 
 ## Project layout
 

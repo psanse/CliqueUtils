@@ -41,7 +41,7 @@ TEST_F(CliqueCommonTest, find_iset_enlarge_singleton) {
 	int posEnd = 6;
 
 	//////////////////////////////////////////////////////
-	int nV = clique_utils::find_iset (ug, v, lv, posBegin, posEnd);
+	int nV = clique_utils::iset_prefix_size (ug, v, lv, posBegin, posEnd);
 	//////////////////////////////////////////////////////
 
 	EXPECT_EQ(3, nV); 	//{3, 4, 5} - {1, 3, 4, 5} form an independent set
@@ -55,7 +55,14 @@ TEST_F(CliqueCommonTest, find_iset_consecutive_vertices) {
 	int posEnd = 6;
 
 	//////////////////////////////////////////////////////
-	int nV = clique_utils::find_iset(ug, lv, posBegin, posEnd);
+	int nV = clique_utils::iset_prefix_size(ug, lv, posBegin, posEnd);
+	//////////////////////////////////////////////////////
+
+	EXPECT_EQ(4, nV); 	//{1, 2, 3, 4} is an iset
+
+	//the whole range is an iset
+	//////////////////////////////////////////////////////
+	nV = clique_utils::iset_prefix_size(ug, lv, posBegin, 5);
 	//////////////////////////////////////////////////////
 
 	EXPECT_EQ(4, nV); 	//{1, 2, 3, 4} is an iset
@@ -70,7 +77,7 @@ TEST_F(CliqueCommonTest, find_clique) {
 
 	//////////////////////////////////////////////////////
 	std::vector<int> clq = { 0 };
-	int nV = clique_utils::find_clique(ug, clq, lv, posBegin, posEnd);
+	int nV = clique_utils::extend_clique(ug, clq, lv, posBegin, posEnd);
 	//////////////////////////////////////////////////////
 
 	EXPECT_EQ(1, nV); 							//only vertex {3} is added to clq		
@@ -173,6 +180,14 @@ TEST_F(CliqueCommonTest, is_clique) {
 	EXPECT_TRUE(clique_utils::is_clique(ug, bb));
 	/////////////////////////////////////
 
+	//not a clique - (1, 3) is not an edge, although every vertex has a neighbor in the set
+	bb.set_bit(1);
+	bb.set_bit(3);
+
+	/////////////////////////////////////
+	EXPECT_FALSE(clique_utils::is_clique(ug, bb));
+	/////////////////////////////////////
+
 	//empty set - not a clique
 	bb.erase_bit();
 
@@ -250,15 +265,18 @@ TEST(Clique, find_clique_in_pool) {
 	ug.add_edge(2, 5);
 	ug.add_edge(3, 4);
 
-	std::vector<int> clq;
+	std::vector<vertex_t> clq;
 	typename ugraph::vertex_bitset_t bbsg{ ug.size(), { 0, 1, 2, 3, 4, 5} };
 
 	/////////////////////////////////////////////////////////
 	int nV = clique_utils::find_clique_from_pool(ug, clq, bbsg);
 	/////////////////////////////////////////////////////////
 
-	//pool of cliques: {0, 1, 3, 4} {1} {2 5} {3 4} {4} {5} - clq = {0, 1, 3, 4}
-	std::vector<int> clq_exp = { 0, 1, 3, 4 };
+	//pool of cliques: {0, 1} {1} {2, 5} {3, 4} {4} {5} - clq = {0, 1} (first largest clique in the pool)
+	//note: the maximum clique {0, 3, 4} is not in the pool, since 1 is taken first from N(0)
+	EXPECT_EQ(2, nV);
+
+	std::vector<vertex_t> clq_exp = { 0, 1 };
 	EXPECT_EQ(clq_exp, clq);
 
 }

@@ -21,184 +21,226 @@
 
 namespace clique_utils {
 
-	///////////////////
-	//clique and independent set heuristics
+	using vertex_pos_t = unsigned int;		//position type in a vertex collection
+
+	//////////////////
+	// heuristics
 
 	/**
-	* @brief Heuristic that determines the size of the maximal independent set formed by the first consecutive vertices
-	*		 in the (half-open) range [@begin, @end[ of the set @lv
-	* @param g input graph
-	* @param lv: input set of vertices (C-style array)
-	* @param begin, end: positions of first and one-after-last the last vertex in @lv to be considered
-	* @returns: size (number of vertices) of the independent set
-	* @details: runs in O(n^2) worst-case time, where n = end - begin
-	* @TODO - builds and iset but only returns its size
-	**/
+	 * @brief Returns the number of consecutive vertices that form
+	 *        an independent set, starting at a given position.
+	 *
+	 * @details Vertices are examined in their given order.
+	 *          The function stops at the first vertex adjacent
+	 *          to any previously examined vertex.
+	 *
+	 * @tparam GraphT Graph type.
+	 * @param graph Input graph.
+	 * @param vertices Array containing the vertex sequence.
+	 * @param begin First position to examine (inclusive).
+	 * @param end Last position to examine (exclusive).
+	 * @return Number of vertices in the independent prefix.
+	 *
+	 * @pre begin <= end.
+	 * @pre vertices contains at least end valid entries.
+	 */
 	template<class GraphT>
 	inline
-		int find_iset(const GraphT& g, int lv[], unsigned int begin, unsigned int end) {
-
-		////////////////////////
+		int iset_prefix_size(
+			const GraphT& graph,
+			const vertex_t vertices[],
+			vertex_pos_t begin,
+			vertex_pos_t end)
+	{
 		assert(begin <= end);
-		///////////////////////
 
-		std::vector<int> iset;
-		iset.push_back(lv[begin]);
-
-		//main loop
-		for (auto i = begin + 1; i < end; ++i) {
-			int w = lv[i];
-
-			//determines if w can be added to the independent set
-			for (const auto& v : iset) {
-				////////////////////////////////////////////////
-				if (g.is_edge(v, w)) { return static_cast<int>(iset.size()); }
-				///////////////////////////////////////////////
+		for (vertex_pos_t i = begin; i < end; ++i) {
+			for (vertex_pos_t j = begin; j < i; ++j) {
+				if (graph.is_edge(vertices[j], vertices[i])) {
+					return static_cast<int>(i - begin);
+				}
 			}
-
-			//adds the vertex to the independent set
-			iset.push_back(w);
-
 		}
 
-		return static_cast<int>(iset.size());
+		return static_cast<int>(end - begin);		//all vertices in the range form an independent set
 	}
 
 	/**
-	* @brief Heuristic that determines the size of the maximal independent set that can enlarge the singleton set {@v}
-	*        considering the first consecutive vertices in the (half open)range [@begin, @end[ of the set @lv
-	* @param g input graph
-	* @param v: input vertex that determines the singleton independent set {v} to be enlarged
-	* @param lv: input set of vertices (C-style array)
-	* @param begin, end: positions of first and one-after-last the last vertex in @lv to be considered
-	* @returns: size of the enlarged independent set (excluding @v)
-	* @details: runs in O(n^2) worst-case time, where n = end - begin
-	**/
+	 * @brief Computes the number of consecutive vertices that can extend
+	 *        the singleton independent set {v}.
+	 *
+	 * @details Examines vertices sequentially in the half-open range
+	 *          [begin, end), stopping at the first vertex adjacent to
+	 *          v or to any previously accepted vertex.
+	 *
+	 *          Runs in O(n^2) worst-case time, where n = end - begin.
+	 *
+	 * @param graph Input graph.
+	 * @param v Initial vertex of the independent set.
+	 * @param vertices Array of candidate vertices.
+	 * @param begin First position to examine (inclusive).
+	 * @param end Last position to examine (exclusive).
+	 * @return Number of accepted vertices, excluding v.
+	 *
+	 * @pre begin <= end.
+	 * @pre vertices contains at least end elements.
+	 * @pre v does not occur in vertices[begin, end).
+	 */
 	template<class GraphT>
 	inline
-		int find_iset(const GraphT& g, int v, int lv[], unsigned int begin, unsigned int end) {
-
-		////////////////////////
+		int iset_prefix_size(
+			const GraphT& g,
+			vertex_t v,
+			const vertex_t vertices[],
+			vertex_pos_t begin,
+			vertex_pos_t end)
+	{
 		assert(begin <= end);
-		///////////////////////
 
-		int nV = 0;
+		for (vertex_pos_t i = begin; i < end; ++i) {
 
-		//main loop
-		for (auto i = begin; i < end; ++i) {
+			const vertex_t w = vertices[i];
 
-			//candidate vertex to enlarge the independent set
-			int w = lv[i];
-
-			//check that w is non-adjacent to v
-			if (g.neighbors(v).is_bit(w)) { return nV; }
-
-
-			//check that w is non-adjacent to all the previous vertices in @lv 
-			for (auto j = i - 1; j >= begin; --j) {
-
-				///////////////////////////////////////////////////////////
-				if (g.neighbors(w).is_bit(lv[j])) { return nV; }
-				///////////////////////////////////////////////////////////
+			// Check adjacency to the initial vertex.
+			if (g.neighbors(v).is_bit(w)) {
+				return static_cast<int>(i - begin);
 			}
 
-			nV++;
+			const auto& neighbors = g.neighbors(w);
+
+			// Check adjacency to previously accepted vertices.
+			for (vertex_pos_t j = begin; j < i; ++j) {
+				if (neighbors.is_bit(vertices[j])) {
+					return static_cast<int>(i - begin);
+				}
+			}
 		}
 
-		return nV;
+		return static_cast<int>(end - begin);
 	}
 
-
-
-
 	/**
-	* @brief Clique heuristic that enlarges the clique in @clq with vertices in the half-open range [@begin, @end[ of the set @lv.
-	*		 Vertices are taken in order from @lv and fixed to @clq if adjacent to all vertices in @clq.
-	* @param g input graph
-	* @param lv: input set of vertices (C-style array)
-	* @param begin, end: pointers to first and one after the last vertex in @lv to be considered
-	* @param clq: input clique to be enlarged (if possible)
-	* @returns: size (number of vertices) added to @clq
-	**/
+	 * @brief Greedily extends an existing clique using a sequence of candidate vertices.
+	 *           The resulting clique is maximal with respect to the examined
+	 *           candidates, but is not necessarily a maximum clique.
+	 *
+	 * @details Examines vertices sequentially in the half-open range
+	 *          [begin, end). Each vertex is added to @p clq if it is
+	 *          adjacent to all vertices currently in the clique.
+	 *          Incompatible vertices are skipped.
+	 *
+	 *          Runs in O(n(m + n)) worst-case time, where
+	 *          n = end - begin and m is the initial size of @p clq.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @param graph Input graph.
+	 * @param clq Input clique, extended in place.
+	 * @param vertices Array of candidate vertices.
+	 * @param begin First position to examine (inclusive).
+	 * @param end Last position to examine (exclusive).
+	 * @return Number of vertices added to @p clq.
+	 *
+	 * @pre begin <= end.
+	 * @pre vertices contains at least end elements.
+	 * @pre clq is a valid clique.
+	 * @pre Candidate vertices are distinct and do not occur in clq.
+	 */
 	template<class GraphT>
 	inline
-		int find_clique(const GraphT& g, std::vector<int>& clq, int lv[], unsigned int begin, unsigned int end) {
-
-		////////////////////////
+		int extend_clique(
+			const GraphT& graph,
+			bitgraph::vertices& clq,
+			const vertex_t vertices[],
+			vertex_pos_t begin,
+			vertex_pos_t end)
+	{
 		assert(begin <= end);
-		///////////////////////
 
-		bool clq_found = false;
-		int nV = 0;
+		const auto initial_size = clq.size();
 
-		//main loop that iterates over all the vertices in the range
-		for (auto i = begin; i < end; ++i) {
-			clq_found = true;
-			int w = lv[i];
+		for (vertex_pos_t i = begin; i < end; ++i) {
 
-			//checks the vertex is adjacent to all vertices in @clq	
-			for (const auto& v : clq) {
-				if (!g.is_edge(v, w)) {
-					clq_found = false;
+			const vertex_t w = vertices[i];
+			bool compatible = true;
+
+			// Check adjacency to all vertices in the current clique.
+			for (const vertex_t v : clq) {
+				if (!graph.is_edge(v, w)) {
+					compatible = false;
 					break;
 				}
 			}
 
-			//adds the vertex to the clique if previous condition is met
-			if (clq_found) {
-				clq.push_back(lv[i]);
-				nV++;
+			if (compatible) {
+				clq.push_back(w);
 			}
 		}
 
-		return nV;
+		return static_cast<int>(clq.size() - initial_size);
 	}
 
 	/**
-	* @brief Clique heuristic that builds a clique with the vertices in @bbsg.
-	*		 Vertices are taken in order from @bbsg and fixed to @clq if possible.
-	* @param g input graph
-	* @param clq: output clique
-	* @param bbsg: (bit)set of vertices
-	* @param template Reverse: TRUE vertices are taken from bbsg from last to first, FALSE from first to last
-	* @returns: number of vertices in clq
-	* @TODO: possibly return the clique, add if constexpr when C++17 is accepted
-	**/
+	 * @brief Greedily constructs a clique from a set of candidate vertices.
+	 *
+	 * @details Vertices are selected in increasing or decreasing order,
+	 *          according to @p Reverse. After selecting each vertex,
+	 *          the remaining candidates are restricted to its neighbors.
+	 *
+	 *          The resulting clique is maximal with respect to the
+	 *          initial candidate set, but is not necessarily maximum.
+	 *
+	 *          The input bitset is not modified.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @tparam Reverse If true, processes vertices in decreasing order;
+	 *                 otherwise, in increasing order.
+	 *
+	 * @param graph Input graph.
+	 * @param clq Output clique, cleared before construction.
+	 * @param vertices Bitset of candidate vertices.
+	 * @return Number of vertices in the resulting clique.
+	 *
+	 * @note Uses bitset intersection to efficiently prune candidates.
+	 */
 	template<class GraphT, bool Reverse = false>
 	inline
-		int find_clique(const GraphT& g, std::vector<int>& clq, typename GraphT::vertex_bitset_t& bbsg) {
+		int find_clique(
+			const GraphT& graph,
+			bitgraph::vertices& clq,
+			const typename GraphT::vertex_bitset_t& vertices)
+	{
 
-		typename GraphT::vertex_bitset_t bb(bbsg);
+		typename GraphT::vertex_bitset_t candidates{ vertices };
 		clq.clear();
 
-		//main loop - destructive scan of bb
-		if /*constexpr*/ (Reverse) {
-			bb.init_scan(bbo::NON_DESTRUCTIVE_REVERSE);
-		}
-		else { bb.init_scan(bbo::NON_DESTRUCTIVE); }
+		candidates.init_scan(
+			Reverse ? bbo::NON_DESTRUCTIVE_REVERSE : bbo::NON_DESTRUCTIVE
+		);
 
-		int v = bbo::noBit;
 		while (true) {
 
-			if /*constexpr*/ (Reverse) { v = bb.prev_bit(); }
-			else { v = bb.next_bit(); }
+			const vertex_t v = Reverse 
+					? candidates.prev_bit():
+					  candidates.next_bit();
 
-			/////////////////////////////
-			if (v == bbo::noBit) break;
-			///////////////////////////////
+			if (v == bbo::noBit) {
+				break;
+			}
 
-			//v fixed in the clique
 			clq.push_back(v);
 
-			//optimization of bb &= g.get_neighbors(w);	
-			if /*constexpr*/ (Reverse) {
-				for (auto nBB = WDIV(v); nBB >= 0; --nBB) {
-					bb.block(nBB) &= g.neighbors(v).block(nBB);
+			// Restrict remaining candidates to neighbors of v.
+			if (Reverse) {
+				for (block_index_t nBB = WDIV(v); nBB >= 0; --nBB) {
+					candidates.block(nBB) &= graph.neighbors(v).block(nBB);
 				}
 			}
 			else {
-				for (auto nBB = WDIV(v); nBB < static_cast<int>(g.num_blocks()); ++nBB) {
-					bb.block(nBB) &= g.neighbors(v).block(nBB);
+				for (block_index_t nBB = WDIV(v);
+					nBB < static_cast<int>(graph.num_blocks());
+					++nBB)
+				{
+					candidates.block(nBB) &= graph.neighbors(v).block(nBB);
 				}
 			}
 		}
@@ -207,235 +249,208 @@ namespace clique_utils {
 	}
 
 	/**
-	* @brief Clique heuristic that builds a clique with the vertices in @bbsg.
-	*		 Each time the vertex with maximum degree that can enlarge the clique is selected
-	* @param g input graph
-	* @param clq: output clique
-	* @param bbsg: (bit)set of vertices
-	* @param template Reverse: TRUE vertices are taken from bbsg from last to first, FALSE from first to last
-	* @returns: number of vertices in clq
-	* @details: created in 13/10/2019 (Paris), optimized in 06/05/2025
-	* @TODO: possibly return the clique, add if constexpr when C++17 is accepted
-	**/
+	 * @brief Greedily constructs a clique using a maximum-degree heuristic.
+	 *
+	 * @details At each iteration, selects a vertex with maximum degree
+	 *          in the subgraph induced by the current candidates.
+	 *          The candidate set is then restricted to its neighbors.
+	 *
+	 *          Ties are resolved according to @p Reverse.
+	 *          When no candidate has a neighbor, one remaining vertex
+	 *          is added to the clique and the algorithm terminates.
+	 *
+	 *          The resulting clique is maximal with respect to the
+	 *          initial candidate set, but is not necessarily maximum.
+	 *          The input bitset is not modified.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @tparam Reverse If true, breaks ties in favor of higher vertex IDs;
+	 *                 otherwise, in favor of lower vertex IDs.
+	 *
+	 * @param graph Input graph.
+	 * @param clq Output clique, cleared before construction.
+	 * @param vertices Bitset of candidate vertices.
+	 * @return Number of vertices in the resulting clique.
+	 *
+	 * @note Uses population counts to compute candidate degrees.
+	 */
 	template<class GraphT, bool Reverse = false>
-	inline
-		int find_clique_max_deg(const GraphT& g, std::vector<int>& clq, const typename GraphT::vertex_bitset_t& bbsg) {
-
-		typename GraphT::vertex_bitset_t bbsgC{ bbsg };
+	inline int find_clique_max_deg(
+		const GraphT& graph,
+		bitgraph::vertices& clq,
+		const typename GraphT::vertex_bitset_t& vertices)
+	{
+		typename GraphT::vertex_bitset_t candidates{ vertices };
 		clq.clear();
 
-		int pcmax, pc;
-		int vmax, v;
-		do {
+		while (!candidates.is_empty()) {
 
-			/////////////////
-			//finds the vertex with max deg in the current neighborhood
-			pcmax = 0;
+			degree_t max_degree = -1;
+			vertex_t best_vertex = bbo::noBit;
 
-			if /*constexpr*/ (Reverse) { bbsgC.init_scan(bbo::NON_DESTRUCTIVE_REVERSE); }
-			else { bbsgC.init_scan(bbo::NON_DESTRUCTIVE); }
+			candidates.init_scan(
+				Reverse ? bbo::NON_DESTRUCTIVE_REVERSE : bbo::NON_DESTRUCTIVE
+			);
+
+			
+			// Find a maximum-degree vertex in the candidate subgraph.
 			while (true) {
-				if /*constexpr*/ (Reverse) { v = bbsgC.prev_bit(); }
-				else { v = bbsgC.next_bit(); }
 
-				////////////////////////////
-				if (v == bbo::noBit) break;
-				////////////////////////////
+				const vertex_t v = Reverse
+					? candidates.prev_bit()
+					: candidates.next_bit();
 
-				pc = 0;
-				const typename GraphT::vertex_bitset_t& bbn = g.neighbors(v);
-				for (int nBB = 0; nBB < g.num_blocks(); ++nBB) {
-					pc += bitgraph::bblock::popc64(bbsgC.block(nBB) & bbn.block(nBB));
+				if (v == bbo::noBit) {
+					break;
 				}
 
-				//store vertex if more neighbors
-				if (pcmax < pc) {
-					pcmax = pc;
-					vmax = v;
+				int degree = 0;
+				const auto& neighbors = graph.neighbors(v);
+
+				for (block_index_t nBB = 0; nBB < graph.num_blocks(); ++nBB) {
+					degree += bitgraph::bblock::popc64(
+						candidates.block(nBB) & neighbors.block(nBB));
+				}
+
+				// Strict comparison preserves the first vertex in a tie.
+				if (degree > max_degree) {
+					max_degree = degree;
+					best_vertex = v;
 				}
 			}
 
-			////////////////////////
-			//actions depending on pcmax
-			if (pcmax > 0) {
+			// Select the best candidate.
+			clq.push_back(best_vertex);
 
-				//add vmax to the clique 
-				clq.push_back(vmax);
+			// Restrict candidates to neighbors of the selected vertex.
+			candidates &= graph.neighbors(best_vertex);
+		}
 
-				//removes non-adjacent vertices to vmax from bbsgC
-				bbsgC &= g.neighbors(vmax);
-			}
-			else {
-
-				////////////////////////
-				assert(pcmax == 0);
-				////////////////////////
-
-				// pcmax == 0, empty neighborhood, bbsg is an iset
-				// add first (could be any) vertex from bbsg to the clq  -  loop ends
-				int w = bbsgC.lsb();
-
-				if (w != bbo::noBit) { clq.push_back(w); }
-			}
-
-			//if pcmax ==0 at least one vertex can enlarge clq, 
-			//so continue iterating, else STOP
-		} while (pcmax > 0);
-
-		return (int)clq.size();
+		return static_cast<int>(clq.size());
 	}
 
 	/**
-	* @brief: Clique heuristic that computes a clique from a pool of cliques with vertices in @bbsg.
-	*		  Specifically, the pool are all the possible |@bbsg| cliques formed with a first vertex from @bbsg
-	*		  enlarged by the remaining vertices taken in order.
-	*		  The procedure chooses the LARGEST clique from the pool.
-	* @param g input graph
-	* @param clq: output clique
-	* @param bbsg: (bit)set of vertices
-	* @returns: number of vertices in clq
-	* @details: imported from copt repo, optimized in 08/05/2025
-	**/
+	 * @brief Finds the largest clique among those constructed greedily
+	 *        from each candidate vertex.
+	 *
+	 * @details Each vertex in @p vertices is used as the initial vertex
+	 *          of a clique. The clique is greedily extended with subsequent
+	 *          candidate vertices in increasing order, using bitset
+	 *          intersections to maintain adjacency to all selected vertices.
+	 *
+	 *          The largest clique found is returned in @p clq.
+	 *          The result is not necessarily a maximum clique.
+	 *
+	 * @tparam GraphT Undirected graph type.
+	 * @param graph Input graph.
+	 * @param clq Output clique, cleared before construction.
+	 * @param vertices Bitset of candidate vertices.
+	 * @return Number of vertices in the resulting clique.
+	 *
+	 * @note The input bitset is not modified.
+	 */
 	template<class GraphT>
-	inline
-		int find_clique_from_pool(const GraphT& g, std::vector<int>& clq, typename GraphT::vertex_bitset_t& bbsg) {
+	inline int find_clique_from_pool(
+		const GraphT& graph,
+		bitgraph::vertices& clq,
+		const typename GraphT::vertex_bitset_t& vertices)
+	{
+		using bitset_t = typename GraphT::vertex_bitset_t;
 
-		typename GraphT::vertex_bitset_t bb(g.size());
 		clq.clear();
 
-		//main loop - seed vertex for a clique 
-		Vertices clq_curr;
-		for (int v = 0; v < g.num_vertices(); ++v) {
+		bitset_t candidates(vertices);
+		bitset_t seeds(vertices);
+
+		bitgraph::vertices clq_curr;
+
+		seeds.init_scan(bbo::NON_DESTRUCTIVE);
+
+		vertex_t v = bbo::noBit;
+
+		while ((v = seeds.next_bit()) != bbo::noBit) {
 
 			clq_curr.clear();
-
-			//fix vertex in the current clique
 			clq_curr.push_back(v);
 
-			////////////
-			//determine clique with the first consecutive vertices in the neighboorhood of v
+			// Candidates adjacent to v, with IDs greater than v.
+			bitgraph::AND<true>(
+				v,
+				graph.num_vertices() - 1,
+				graph.neighbors(v),
+				vertices,
+				candidates
+			);
 
-			//initialize bb with the neighborhood of v in bbsg in [v, end)
-			bitgraph::AND<true>(v, g.num_vertices() - 1, g.neighbors(v), bbsg, bb);
+			candidates.init_scan(bbo::DESTRUCTIVE);
 
-			//main loop
-			int w = bbo::noBit;
-			bb.init_scan(bbo::DESTRUCTIVE);
-			while ((w = bb.next_bit_del()) != bbo::noBit) {
+			vertex_t w = bbo::noBit;
+
+			while ((w = candidates.next_bit_del()) != bbo::noBit) {
 
 				clq_curr.push_back(w);
 
-				//optimization of bb &= g.get_neighbors(w);	
-				for (auto nBB = WDIV(w); nBB < g.num_blocks(); ++nBB) {
-					bb.block(nBB) &= g.neighbors(v).block(nBB);
+				// Restrict remaining candidates to neighbors of w.
+				const auto& neighbors_w = graph.neighbors(w);
+
+				for (block_index_t nBB = BITSCAN_WDIV(w);
+					nBB < graph.num_blocks();
+					++nBB)
+				{
+					candidates.block(nBB) &= neighbors_w.block(nBB);
 				}
-
 			}
-			///////////
 
-			//I/O
-			//utils::stl::print_collection(clq_curr, std::cout, true);
-
-			//update clique if smaller than current clique
-			if (clq.size() < clq_curr.size()) { clq = clq_curr; }
+			// Retain the largest clique found.
+			if (clq_curr.size() > clq.size()) {
+				clq = clq_curr;
+			}
 		}
 
-		return (int)clq.size();
+		return static_cast<int>(clq.size());
 	}
-
-
-	//////////////////////////////////
-	// VERY CLIQUE SPECIFIC - PLACE IT IN COPT
-	//// enlarges @clq with vertices in lv, starting from @begin
-	//// can detect cliques by swapping one of the vertices in @quasi
-	////
-	//// RETURN val:number of vertices added to clq (0 or 1)
-	////
-	//// COMMENTS: format issues-MUST BE! @quasi[VERTEX]:=-1 or VERTEX
-
-	//template<class GraphT>
-	//int find_clq(GraphT& g, Vertices& clq, int* quasi, int begin, int* lv, int end) {
-	//			
-	//	int num_added = 0, counter = 0, iqv = -1;	
-
-	//	//main loop - iterates over each vertex in the range
-	//	for (int i = (end - 1); i >= begin ; i--){						//reverse direction! perhaps better for brock? (26/01/2021)
-	//	//for (int i = begin; i < end; i++) {	
-	//	// 	
-	//		counter = 0;
-
-	//		for (auto j = 0; j < clq.size(); ++j) {
-	//			if (!g.is_edge(lv[i], clq[j])) { 
-	//				counter++;				
-	//				if (quasi[clq[j]] == -1 || lv[i] == quasi[clq[j]] || counter >= 2) { 
-	//					counter = 2;  
-	//					break; 
-	//				}
-	//				else { iqv = j;  };					
-	//			}
-	//		}
-	//		
-	//		if (counter == 0) {	
-	//			LOG_ERROR("warning!- improving clique with previous dolls, find_clq(...)" << lv[i]);
-	//			cin.get();
-	//			clq.push_back(lv[i]);
-	//			num_added++;
-	//			break;						//quasi info may not be valid	
-	//		}else if (counter == 1) {
-	//			int qswap = quasi[clq[iqv]];
-	//			if (  g.is_edge(lv[i], qswap) ) {	//quasi-clique check
-	//				
-	//				clq.push_back(lv[i]);
-	//				clq[iqv] = qswap;			//swap vertex in @clq with the new quasi vertex 					
-	//				num_added++;
-	//															
-	//				break;						//EXIT-quasi clique info is not valid any more
-	//			}
-	//			else {
-	//				//LOG_INFO("ENCONTRADO SWAP SIN MEJORA: "<< lv[i]);
-	//			}
-	//			
-	//		}			
-	//	}
-
-	//	return num_added;
-	//}
-	//	
+		
 
 	/////////////////
 	//boolean operations
 
-		/**
-		* @brief Determines if the set of vertices @bb is an independent set
-		* @param g: input graph
-		* @param bb: input set of vertices (bitset), of capacity at least g.size()
-		* @returns TRUE if the set is an independent set (empty sets are NOT isets)
-		* @TODO: not optimized for sparse graph types
-		**/
+	/**
+	* @brief Determines if the set of vertices @bb is an independent set
+	* @param graph: input graph
+	* @param vertices: input set of vertices (bitset), of capacity at least g.size()
+	* @returns TRUE if the set is an independent set (empty sets are NOT isets)
+	* @TODO: not optimized for sparse graph types
+	**/
 	template<class GraphT>
 	inline
-		bool is_iset(const GraphT& g, typename GraphT::vertex_bitset_t& bb) {
+		bool is_iset(
+			const GraphT& graph, 
+			typename GraphT::vertex_bitset_t& vertices)
+	{
+		if (vertices.is_empty()) {
+			return false;
+		}
 
-		bb.init_scan(bbo::NON_DESTRUCTIVE);
-		int v = bbo::noBit;
-		while ((v = bb.next_bit()) != bbo::noBit) {
+		vertices.init_scan(bbo::NON_DESTRUCTIVE);
+		vertex_t v = bbo::noBit;
+		while ((v = vertices.next_bit()) != bbo::noBit) {
 
 			//check neighborhood of v
-			const auto& bbnv = g.neighbors(v);
-			for (auto nBB = 0; nBB < INDEX_1TO1(g.size()); ++nBB) {
+			const auto& neighbors_v = graph.neighbors(v);
 
-				//////////////////////////////////////////
-				if (bb.block(nBB) & bbnv.block(nBB)) {
+			// Check only blocks from the current vertex onwards.
+			for (block_index_t nBB = 0 /*BITSCAN_WDIV(v)*/ ;
+				nBB < graph.num_blocks(); ++nBB) {
+							
+				if (vertices.block(nBB) & neighbors_v.block(nBB)) {
 					return false;
 				}
-				/////////////////////////////////////////
+				
 			}
 
 		}//end bitscan
 
-		//returns false if the set is empty, true otherwise
-		return (bb.is_empty()) ? false : true;
-
+		return true;  // iset confirmed
 	}
 
 	/**
@@ -502,25 +517,29 @@ namespace clique_utils {
 	inline
 		bool is_clique(const GraphT& g, typename GraphT::vertex_bitset_t& bb) {
 
+		const int pc = bb.count();
+		if (pc == 0) { return false; }					//an empty set is not a clique
+
 		bb.init_scan(bbo::NON_DESTRUCTIVE);
 		int v = bbo::noBit;
 		while ((v = bb.next_bit()) != bbo::noBit) {
 
-			//check neighborhood of v
+			//v must be adjacent to all the other (pc - 1) vertices in bb
 			const auto& bbnv = g.neighbors(v);
+			int pc_nv = 0;
 			for (auto nBB = 0; nBB < bb.num_blocks(); ++nBB) {
-
-				//////////////////////////////////////////
-				if (!(bb.block(nBB) & bbnv.block(nBB))) {
-					return false;
-				}
-				/////////////////////////////////////////
+				pc_nv += bitgraph::bblock::popc64(bb.block(nBB) & bbnv.block(nBB));
 			}
+
+			//////////////////////////////////////////
+			if (pc_nv != pc - 1) {
+				return false;
+			}
+			/////////////////////////////////////////
 
 		}//end bitscan
 
-		//returns false if the set is empty, true otherwise
-		return (bb.is_empty()) ? false : true;
+		return true;
 
 	}
 
@@ -917,8 +936,72 @@ namespace clique_utils {
 	}
 
 
+}//end of namespace clique_utils
 
 
+#endif // CLIQUE_UTILS_H
+
+
+
+
+	//////////////////////////////////
+	// VERY CLIQUE SPECIFIC - PLACE IT ELSEWHERE
+
+	//// enlarges @clq with vertices in lv, starting from @begin
+	//// can detect cliques by swapping one of the vertices in @quasi
+	////
+	//// RETURN val:number of vertices added to clq (0 or 1)
+	////
+	//// COMMENTS: format issues-MUST BE! @quasi[VERTEX]:=-1 or VERTEX
+
+	//template<class GraphT>
+	//int find_clq(GraphT& g, Vertices& clq, int* quasi, int begin, int* lv, int end) {
+	//			
+	//	int num_added = 0, counter = 0, iqv = -1;	
+
+	//	//main loop - iterates over each vertex in the range
+	//	for (int i = (end - 1); i >= begin ; i--){						//reverse direction! perhaps better for brock? (26/01/2021)
+	//	//for (int i = begin; i < end; i++) {	
+	//	// 	
+	//		counter = 0;
+
+	//		for (auto j = 0; j < clq.size(); ++j) {
+	//			if (!g.is_edge(lv[i], clq[j])) { 
+	//				counter++;				
+	//				if (quasi[clq[j]] == -1 || lv[i] == quasi[clq[j]] || counter >= 2) { 
+	//					counter = 2;  
+	//					break; 
+	//				}
+	//				else { iqv = j;  };					
+	//			}
+	//		}
+	//		
+	//		if (counter == 0) {	
+	//			LOG_ERROR("warning!- improving clique with previous dolls, find_clq(...)" << lv[i]);
+	//			cin.get();
+	//			clq.push_back(lv[i]);
+	//			num_added++;
+	//			break;						//quasi info may not be valid	
+	//		}else if (counter == 1) {
+	//			int qswap = quasi[clq[iqv]];
+	//			if (  g.is_edge(lv[i], qswap) ) {	//quasi-clique check
+	//				
+	//				clq.push_back(lv[i]);
+	//				clq[iqv] = qswap;			//swap vertex in @clq with the new quasi vertex 					
+	//				num_added++;
+	//															
+	//				break;						//EXIT-quasi clique info is not valid any more
+	//			}
+	//			else {
+	//				//LOG_INFO("ENCONTRADO SWAP SIN MEJORA: "<< lv[i]);
+	//			}
+	//			
+	//		}			
+	//	}
+
+	//	return num_added;
+	//}
+	//	
 
 
 	//////////////////////////////////
@@ -971,8 +1054,8 @@ namespace clique_utils {
 	//	}
 
 
-		////////////////////////
-		//Others - outgoing / incoming edges
+	////////////////////////
+	//Others - outgoing / incoming edges
 
 	//	template<class GraphT>
 	//	inline
@@ -1021,9 +1104,3 @@ namespace clique_utils {
 	//		return min;
 	//	}
 
-
-
-}//end of namespace clique_utils
-
-
-#endif // CLIQUE_UTILS_H
