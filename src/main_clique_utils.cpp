@@ -3,8 +3,8 @@
  * @brief Demo executable for the clique and independent set utilities in clique_utils.h.
  *
  * @details With no arguments it runs on a small demo graph; otherwise it reads the graph
- * from the DIMACS file given as the first argument. Prints a greedy clique lower bound
- * and the greedy ISEQ coloring upper bound for the maximum clique.
+ * from the DIMACS file given as the first argument. Prints both a lower bound
+ * and a greedy sequential coloring upper bound for the maximum clique.
  *
  * @author pss
  */
