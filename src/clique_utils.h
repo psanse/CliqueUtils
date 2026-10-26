@@ -16,7 +16,7 @@
  * @note Imported into CliqueUtils on 2025-05-09.
  * @note Last updated: 2026-10-26.
  * 
- * @todo Check experimental functions at the end of the file (e.g., extend_clique_with_iset).
+ * @todo Check commented out experimental functions at the end of the file 
  */
 
 #ifndef CLIQUE_UTILS_H
@@ -61,7 +61,7 @@ namespace clique_utils {
 	inline
 		int iset_prefix_size(
 			const GraphT& graph,
-			const vertex_t vertices[],
+			const bitgraph::vertex_t vertices[],
 			vertex_pos_t begin,
 			vertex_pos_t end)
 	{
@@ -103,8 +103,8 @@ namespace clique_utils {
 	inline
 		int iset_prefix_size(
 			const GraphT& g,
-			vertex_t v,
-			const vertex_t vertices[],
+			bitgraph::vertex_t v,
+			const bitgraph::vertex_t vertices[],
 			vertex_pos_t begin,
 			vertex_pos_t end)
 	{
@@ -112,7 +112,7 @@ namespace clique_utils {
 
 		for (vertex_pos_t i = begin; i < end; ++i) {
 
-			const vertex_t w = vertices[i];
+			const bitgraph::vertex_t w = vertices[i];
 
 			// Check adjacency to the initial vertex.
 			if (g.neighbors(v).is_bit(w)) {
@@ -163,7 +163,7 @@ namespace clique_utils {
 		int extend_clique(
 			const GraphT& graph,
 			bitgraph::vertices& clq,
-			const vertex_t vertices[],
+			const bitgraph::vertex_t vertices[],
 			vertex_pos_t begin,
 			vertex_pos_t end)
 	{
@@ -173,11 +173,11 @@ namespace clique_utils {
 
 		for (vertex_pos_t i = begin; i < end; ++i) {
 
-			const vertex_t w = vertices[i];
+			const bitgraph::vertex_t w = vertices[i];
 			bool compatible = true;
 
 			// Check adjacency to all vertices in the current clique.
-			for (const vertex_t v : clq) {
+			for (const bitgraph::vertex_t v : clq) {
 				if (!graph.is_edge(v, w)) {
 					compatible = false;
 					break;
@@ -227,16 +227,16 @@ namespace clique_utils {
 		clq.clear();
 
 		candidates.init_scan(
-			Reverse ? bbo::NON_DESTRUCTIVE_REVERSE : bbo::NON_DESTRUCTIVE
+			Reverse ? bitgraph::bbo::NON_DESTRUCTIVE_REVERSE : bitgraph::bbo::NON_DESTRUCTIVE
 		);
 
 		while (true) {
 
-			const vertex_t v = Reverse 
+			const bitgraph::vertex_t v = Reverse 
 					? candidates.prev_bit():
 					  candidates.next_bit();
 
-			if (v == bbo::noBit) {
+			if (v == bitgraph::bbo::noBit) {
 				break;
 			}
 
@@ -244,12 +244,12 @@ namespace clique_utils {
 
 			// Restrict remaining candidates to neighbors of v.
 			if (Reverse) {
-				for (block_index_t nBB = WDIV(v); nBB >= 0; --nBB) {
+				for (bitgraph::block_index_t nBB = WDIV(v); nBB >= 0; --nBB) {
 					candidates.block(nBB) &= graph.neighbors(v).block(nBB);
 				}
 			}
 			else {
-				for (block_index_t nBB = WDIV(v);
+				for (bitgraph::block_index_t nBB = WDIV(v);
 					nBB < static_cast<int>(graph.num_blocks());
 					++nBB)
 				{
@@ -298,29 +298,29 @@ namespace clique_utils {
 
 		while (!candidates.is_empty()) {
 
-			degree_t max_degree = -1;
-			vertex_t best_vertex = bbo::noBit;
+			bitgraph::degree_t max_degree = -1;
+			bitgraph::vertex_t best_vertex = bitgraph::bbo::noBit;
 
 			candidates.init_scan(
-				Reverse ? bbo::NON_DESTRUCTIVE_REVERSE : bbo::NON_DESTRUCTIVE
+				Reverse ? bitgraph::bbo::NON_DESTRUCTIVE_REVERSE : bitgraph::bbo::NON_DESTRUCTIVE
 			);
 
 			
 			// Find a maximum-degree vertex in the candidate subgraph.
 			while (true) {
 
-				const vertex_t v = Reverse
+				const bitgraph::vertex_t v = Reverse
 					? candidates.prev_bit()
 					: candidates.next_bit();
 
-				if (v == bbo::noBit) {
+				if (v == bitgraph::bbo::noBit) {
 					break;
 				}
 
 				int degree = 0;
 				const auto& neighbors = graph.neighbors(v);
 
-				for (block_index_t nBB = 0; nBB < graph.num_blocks(); ++nBB) {
+				for (bitgraph::block_index_t nBB = 0; nBB < graph.num_blocks(); ++nBB) {
 					degree += bitgraph::bblock::popc64(
 						candidates.block(nBB) & neighbors.block(nBB));
 				}
@@ -379,9 +379,9 @@ namespace clique_utils {
 		// Independent non-destructive scan of the (const) input: no copy needed.
 		bitgraph::view::ForwardView<const bitset_t> seeds(vertices);
 
-		vertex_t v = bbo::noBit;
+		bitgraph::vertex_t v = bitgraph::bbo::noBit;
 
-		while ((v = seeds.next_bit()) != bbo::noBit) {
+		while ((v = seeds.next_bit()) != bitgraph::bbo::noBit) {
 
 			clq_curr.clear();
 			clq_curr.push_back(v);
@@ -395,18 +395,18 @@ namespace clique_utils {
 				candidates
 			);
 
-			candidates.init_scan(bbo::DESTRUCTIVE);
+			candidates.init_scan(bitgraph::bbo::DESTRUCTIVE);
 
-			vertex_t w = bbo::noBit;
+			bitgraph::vertex_t w = bitgraph::bbo::noBit;
 
-			while ((w = candidates.next_bit_del()) != bbo::noBit) {
+			while ((w = candidates.next_bit_del()) != bitgraph::bbo::noBit) {
 
 				clq_curr.push_back(w);
 
 				// Restrict remaining candidates to neighbors of w.
 				const auto& neighbors_w = graph.neighbors(w);
 
-				for (block_index_t nBB = BITSCAN_WDIV(w);
+				for (bitgraph::block_index_t nBB = BITSCAN_WDIV(w);
 					nBB < graph.num_blocks();
 					++nBB)
 				{
@@ -459,14 +459,14 @@ namespace clique_utils {
 
 		// Independent non-destructive scan of the (const) input.
 		bitgraph::view::ForwardView<const bitset_t> scan(vertices);
-		vertex_t v = bbo::noBit;
-		while ((v = scan.next_bit()) != bbo::noBit) {
+		bitgraph::vertex_t v = bitgraph::bbo::noBit;
+		while ((v = scan.next_bit()) != bitgraph::bbo::noBit) {
 
 			//check neighborhood of v
 			const auto& neighbors_v = graph.neighbors(v);
 
 			// Check only blocks from the current vertex onwards.
-			for (block_index_t nBB = BITSCAN_WDIV(v);
+			for (bitgraph::block_index_t nBB = BITSCAN_WDIV(v);
 				nBB < graph.num_blocks(); ++nBB) {
 							
 				if (vertices.block(nBB) & neighbors_v.block(nBB)) {
@@ -550,9 +550,9 @@ namespace clique_utils {
 		bool can_extend_iset(
 			const GraphT& graph, 
 			const bitgraph::vertices& vertices, 
-			vertex_t v)
+			bitgraph::vertex_t v)
 	{
-		for (const vertex_t w : vertices) {
+		for (const bitgraph::vertex_t w : vertices) {
 			if (graph.is_edge(v, w)) {
 				return false;
 			}
@@ -589,13 +589,13 @@ namespace clique_utils {
 
 		//independent non-destructive scan: the const input is not modified
 		bitgraph::view::ForwardView<const bitset_t> scan(vertices);
-		vertex_t v = bbo::noBit;
-		while ((v = scan.next_bit()) != bbo::noBit)
+		bitgraph::vertex_t v = bitgraph::bbo::noBit;
+		while ((v = scan.next_bit()) != bitgraph::bbo::noBit)
 		{
 			const auto& neighbors_v = graph.neighbors(v);
-			const block_index_t first_block = WDIV(v);
+			const bitgraph::block_index_t first_block = WDIV(v);
 
-			for (block_index_t nBB = first_block;
+			for (bitgraph::block_index_t nBB = first_block;
 				nBB < static_cast<int>(graph.num_blocks()); ++nBB)
 			{
 				//vertices not adjacent to v: only v itself is allowed
@@ -603,7 +603,7 @@ namespace clique_utils {
 
 				// clears v itself from the non_adjacent set if it is in the same block as v
 				if (nBB == first_block) {
-					non_adjacent &= ~bblock::MASK_BIT(BITSCAN_WMOD(v));	 //clear the bit of v itself
+					non_adjacent &= ~bitgraph::bblock::MASK_BIT(BITSCAN_WMOD(v));	 //clear the bit of v itself
 				}
 
 				if (non_adjacent) {
@@ -684,7 +684,7 @@ namespace clique_utils {
 	inline
 		bool is_clique(
 			const GraphT& graph,
-			const vertex_t vertices[], 
+			const bitgraph::vertex_t vertices[], 
 			std::size_t size)
 	{
 
@@ -730,7 +730,7 @@ namespace clique_utils {
 		bool can_extend_clique(
 			const GraphT& graph,
 			const bitgraph::vertices& clq,
-			vertex_t v)
+			bitgraph::vertex_t v)
 	{
 		
 		for (const auto w : clq) {
@@ -782,18 +782,18 @@ namespace clique_utils {
 				
 		candidates.init_scan(
 			Reverse 
-			? bbo::NON_DESTRUCTIVE_REVERSE 
-			: bbo::NON_DESTRUCTIVE
+			? bitgraph::bbo::NON_DESTRUCTIVE_REVERSE 
+			: bitgraph::bbo::NON_DESTRUCTIVE
 		);	
 
 				
 		while (true) {
 
-			const vertex_t v = Reverse 
+			const bitgraph::vertex_t v = Reverse 
 				? candidates.prev_bit()
 				: candidates.next_bit();
 									
-			if (v == bbo::noBit) {
+			if (v == bitgraph::bbo::noBit) {
 				break;
 			}
 					
@@ -803,14 +803,14 @@ namespace clique_utils {
 			const auto& neighbors_v  = graph.neighbors(v);
 			
 			if (Reverse) {
-				for (block_index_t nBB = BITSCAN_WDIV(v);
+				for (bitgraph::block_index_t nBB = BITSCAN_WDIV(v);
 					nBB >= 0; --nBB)
 				{
 					candidates.block(nBB) &= neighbors_v.block(nBB);
 				}
 			}
 			else {
-				for (block_index_t nBB = BITSCAN_WDIV(v);
+				for (bitgraph::block_index_t nBB = BITSCAN_WDIV(v);
 					nBB < graph.num_blocks(); ++nBB)
 				{
 					candidates.block(nBB) &= neighbors_v.block(nBB);
@@ -875,7 +875,7 @@ namespace clique_utils {
 	 *
 	 * @pre All selected vertex identifiers are valid.
 	 * @pre vertices has capacity for at least graph.num_vertices() bits.
-	 * @pre If ub is not null, it points to a writable array of sufficient size.
+	 * @pre If colors is not null, it points to a writable array of sufficient size.
 	 *
 	 * @note The input bitset is not modified.
 	 * @todo Add unit tests.
@@ -900,7 +900,7 @@ namespace clique_utils {
 		typename GraphT::vertex_bitset_t uncolored(vertices);
 		typename GraphT::vertex_bitset_t candidates(graph.size(), false);		// initially empty
 
-		vertex_t v = bbo::noBit;
+		bitgraph::vertex_t v = bitgraph::bbo::noBit;
 
 		while (true) {
 
@@ -908,11 +908,11 @@ namespace clique_utils {
 
 			// Start a new color class.
 			candidates = uncolored;
-			candidates.init_scan(bbo::DESTRUCTIVE);
+			candidates.init_scan(bitgraph::bbo::DESTRUCTIVE);
 					
 
 			while ((v = candidates.next_bit_del(uncolored)) 
-				!= bbo::noBit)
+				!= bitgraph::bbo::noBit)
 			{
 
 				// Assign the current color.
